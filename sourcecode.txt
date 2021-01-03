@@ -1,0 +1,2707 @@
+      rem window setup - credit RT RUSSELL - BBC 4 WIN manual -------------------------
+
+      rem *ESC OFF
+
+      @%=&00000F0A
+
+      SX%=1920
+      SY%=1030
+      vdu 23,22,SX%;SY%;8,16,16,128
+      vdu 20
+      sys "ShowWindow", @hwnd%, 1
+      title$="BioPolymer Simulation - University of Leicester, By Wills, Maximilian, FK"
+      sys "SetWindowText", @hwnd%, title$
+
+      vdu 26
+      gcol 7
+      clg
+      cls
+
+      off
+
+
+
+      vdu 19,9,16,20,0,50
+      vdu 19,5,16,100,100,255
+      vdu 19,13,16,100,100,120
+      vdu 19,12,16,255,127,0
+
+      rem create data structure for file load and save credit - ditto
+
+
+      dim fs{lStructSize%, hwndOwner%, hInstance%, lpstrFilter%, \
+      \      lpstrCustomFilter%, nMaxCustFilter%, nFilterIndex%, \
+      \      lpstrFile%, nMaxFile%, lpstrFileTitle%, \
+      \      nMaxFileTitle%, lpstrInitialDir%, lpstrTitle%, \
+      \      flags%, nFileOffset{l&,h&}, nFileExtension{l&,h&}, \
+      \      lpstrDefExt%, lCustData%, lpfnHook%, lpTemplateName%}
+      dim fp{t&(260)}
+      ff$ = "Simulation files"+chr$0+"*.smtn*"+chr$0+chr$0
+      fs.lStructSize% = dim(fs{})
+      fs.hwndOwner% = @hwnd%
+      fs.lpstrFilter% = ptr(ff$)
+      fs.lpstrFile% = fp{}
+      fs.nMaxFile% = 260
+      fs.flags% = 6
+
+      filename$=""
+      sim_file_path$=""
+      structure_path$=""
+
+
+      rem high precision maths -----------------
+
+      *float 64
+
+      rem Initialise Arrays, variables ---------
+
+
+      rem simulation
+
+      iteration%=1000
+
+      SUB_iter%=4
+
+      sim_interval=0.001
+
+      Diffusion_const=100
+
+      Steric_Const=8
+
+      Kspring_const=1000
+
+      Sspring_const=2000
+
+
+      rem boltzmann dist function
+
+      dim btzPNT(100,3)
+
+      btzMAG=sqr((2/3)*Diffusion_const*sim_interval)
+
+      dim simPNT(10000,3),simMOVE(10000,3)
+
+
+
+      rem Rotation matrices
+      dim Rx(3,3),Ry(3,3),Rz(3,3)
+
+      newX=0:newY=0:newZ=0:dist=0
+
+      rem link coordinates
+      dim SPoints(10000,3)
+
+
+      rem Chain default properties
+      Overlap_Const=0.8
+
+      Angle_Const=90
+
+      links=101
+
+      Kuhn=6
+
+
+      rem rng precision
+      rpc=100000000
+
+
+      rem GUI / visuals
+
+      GUImode=0
+      IS_STRUC%=0
+      dim button_coord(50,4),button_text$(50),button_col(50),button_tcol(50),GUI_col(4)
+
+      GUI_col(1)=1
+      GUI_col(2)=4
+      GUI_col(3)=2
+      GUI_col(4)=6
+
+
+      CustomPNT1=-1
+      CustomPNT2=-1
+
+      GUI_balls=true
+      GUI_label=false
+      GUI_end=false
+      GUI_custom=false
+
+
+
+      xoff=620
+      yoff=-80
+      scf=12
+
+      INV_IN%=false
+
+
+      rem Populate GUI element array ----------------------------
+
+
+      rem tabs ----------------------------------------
+
+      button_coord(1,1)=80
+      button_coord(1,2)=540
+      button_coord(1,3)=390
+      button_coord(1,4)=490
+      button_text$(1)="Structure Generator"
+      button_col(1)=8
+      button_tcol(1)=8
+
+      button_coord(2,1)=600
+      button_coord(2,2)=1060
+      button_coord(2,3)=390
+      button_coord(2,4)=490
+      button_text$(2)="View Mode"
+      button_col(2)=8
+      button_tcol(2)=8
+
+      button_coord(3,1)=80
+      button_coord(3,2)=540
+      button_coord(3,3)=260
+      button_coord(3,4)=360
+      button_text$(3)="File"
+      button_col(3)=8
+      button_tcol(3)=8
+
+      button_coord(4,1)=600
+      button_coord(4,2)=1060
+      button_coord(4,3)=260
+      button_coord(4,4)=360
+      button_text$(4)="Simulation"
+      button_col(4)=8
+      button_tcol(4)=8
+
+
+
+      rem Structure generator tab ---------------------
+
+      button_coord(5,1)=500
+      button_coord(5,2)=860
+      button_coord(5,3)=1590
+      button_coord(5,4)=1690
+      button_text$(5)=" Enter a value"
+      button_col(5)=6
+      button_tcol(5)=7
+
+      button_coord(6,1)=500
+      button_coord(6,2)=860
+      button_coord(6,3)=1460
+      button_coord(6,4)=1560
+      button_text$(6)=" Enter a value"
+      button_col(6)=6
+      button_tcol(6)=7
+
+      button_coord(7,1)=600
+      button_coord(7,2)=960
+      button_coord(7,3)=890
+      button_coord(7,4)=990
+      button_text$(7)="  Load Dynamic"
+      button_col(7)=6
+      button_tcol(7)=7
+
+      button_coord(8,1)=600
+      button_coord(8,2)=960
+      button_coord(8,3)=760
+      button_coord(8,4)=860
+      button_text$(8)="Save Properties"
+      button_col(8)=6
+      button_tcol(8)=7
+
+      button_coord(9,1)=500
+      button_coord(9,2)=860
+      button_coord(9,3)=1150
+      button_coord(9,4)=1250
+      button_text$(9)=" Enter a value"
+      button_col(9)=6
+      button_tcol(9)=7
+
+      button_coord(10,1)=500
+      button_coord(10,2)=860
+      button_coord(10,3)=1020
+      button_coord(10,4)=1120
+      button_text$(10)=" Enter a value"
+      button_col(10)=6
+      button_tcol(10)=7
+
+      button_coord(11,1)=280
+      button_coord(11,2)=940
+      button_coord(11,3)=610
+      button_coord(11,4)=710
+      button_text$(11)="    Generate Biopolymer..."
+      button_col(11)=6
+      button_tcol(11)=7
+
+
+
+
+      rem View Mode tab -------------------------------
+
+      button_coord(12,1)=200
+      button_coord(12,2)=560
+      button_coord(12,3)=1650
+      button_coord(12,4)=1750
+      button_text$(12)=" Toggle Balls"
+      button_col(12)=12
+      button_tcol(12)=7
+
+      button_coord(13,1)=200
+      button_coord(13,2)=560
+      button_coord(13,3)=1520
+      button_coord(13,4)=1620
+      button_text$(13)=" Toggle Labels"
+      button_col(13)=12
+      button_tcol(13)=7
+
+      button_coord(14,1)=600
+      button_coord(14,2)=960
+      button_coord(14,3)=1650
+      button_coord(14,4)=1750
+      button_text$(14)="Toggle End-End"
+      button_col(14)=12
+      button_tcol(14)=7
+
+      button_coord(15,1)=600
+      button_coord(15,2)=960
+      button_coord(15,3)=1520
+      button_coord(15,4)=1620
+      button_text$(15)=" Toggle Custom"
+      button_col(15)=12
+      button_tcol(15)=7
+
+      button_coord(16,1)=600
+      button_coord(16,2)=960
+      button_coord(16,3)=1390
+      button_coord(16,4)=1490
+      button_text$(16)=" Enter a value"
+      button_col(16)=5
+      button_tcol(16)=7
+
+      button_coord(17,1)=600
+      button_coord(17,2)=960
+      button_coord(17,3)=1260
+      button_coord(17,4)=1360
+      button_text$(17)=" Enter a value"
+      button_col(17)=5
+      button_tcol(17)=7
+
+      button_coord(18,1)=200
+      button_coord(18,2)=560
+      button_coord(18,3)=950
+      button_coord(18,4)=1050
+      button_text$(18)="Chain Colour 1"
+      button_col(18)=1
+      button_tcol(18)=7
+
+      button_coord(19,1)=200
+      button_coord(19,2)=560
+      button_coord(19,3)=820
+      button_coord(19,4)=920
+      button_text$(19)="Chain Colour 2"
+      button_col(19)=12
+      button_tcol(19)=7
+
+      button_coord(20,1)=600
+      button_coord(20,2)=960
+      button_coord(20,3)=950
+      button_coord(20,4)=1050
+      button_text$(20)="  End to End"
+      button_col(20)=2
+      button_tcol(20)=7
+
+      button_coord(21,1)=600
+      button_coord(21,2)=960
+      button_coord(21,3)=820
+      button_coord(21,4)=920
+      button_text$(21)="Custom Distance"
+      button_col(21)=6
+      button_tcol(21)=7
+
+      button_coord(22,1)=180
+      button_coord(22,2)=460
+      button_coord(22,3)=650
+      button_coord(22,4)=750
+      button_text$(22)="   Red"
+      button_col(22)=1
+      button_tcol(22)=7
+
+      button_coord(23,1)=470
+      button_coord(23,2)=760
+      button_coord(23,3)=650
+      button_coord(23,4)=750
+      button_text$(23)="  Green"
+      button_col(23)=2
+      button_tcol(23)=7
+
+      button_coord(24,1)=760
+      button_coord(24,2)=1060
+      button_coord(24,3)=650
+      button_coord(24,4)=750
+      button_text$(24)="  Blue"
+      button_col(24)=12
+      button_tcol(24)=7
+
+
+
+      rem file tab ------------------------------------
+
+
+      button_coord(25,1)=200
+      button_coord(25,2)=560
+      button_coord(25,3)=1650
+      button_coord(25,4)=1750
+      button_text$(25)=" Save Structure"
+      button_col(25)=13
+      button_tcol(25)=13
+
+      button_coord(26,1)=200
+      button_coord(26,2)=560
+      button_coord(26,3)=1520
+      button_coord(26,4)=1620
+      button_text$(26)=" Load Structure"
+      button_col(26)=12
+      button_tcol(26)=7
+
+      button_coord(27,1)=600
+      button_coord(27,2)=960
+      button_coord(27,3)=1650
+      button_coord(27,4)=1750
+      button_text$(27)="Export Structure"
+      button_col(27)=13
+      button_tcol(27)=13
+
+      button_coord(28,1)=600
+      button_coord(28,2)=960
+      button_coord(28,3)=1520
+      button_coord(28,4)=1620
+      button_text$(28)="Import Structure"
+      button_col(28)=13
+      button_tcol(28)=13
+
+      button_coord(29,1)=200
+      button_coord(29,2)=560
+      button_coord(29,3)=1020
+      button_coord(29,4)=1120
+      button_text$(29)="    Browse"
+      button_col(29)=12
+      button_tcol(29)=7
+
+
+
+      rem Simulation tab ------------------------------
+
+      button_coord(30,1)=600
+      button_coord(30,2)=960
+      button_coord(30,3)=1650
+      button_coord(30,4)=1750
+      button_text$(30)="     "+str$(iteration%)
+      button_col(30)=5
+      button_tcol(30)=7
+
+      button_coord(31,1)=600
+      button_coord(31,2)=960
+      button_coord(31,3)=1520
+      button_coord(31,4)=1620
+      button_text$(31)="     "+str$(sim_interval)
+      button_col(31)=5
+      button_tcol(31)=7
+
+      button_coord(32,1)=600
+      button_coord(32,2)=960
+      button_coord(32,3)=1390
+      button_coord(32,4)=1490
+      button_text$(32)="     "+str$(Diffusion_const)
+      button_col(32)=5
+      button_tcol(32)=7
+
+      button_coord(33,1)=600
+      button_coord(33,2)=960
+      button_coord(33,3)=1260
+      button_coord(33,4)=1360
+      button_text$(33)="     "+str$(Steric_Const)
+      button_col(33)=5
+      button_tcol(33)=7
+
+      button_coord(34,1)=200
+      button_coord(34,2)=560
+      button_coord(34,3)=1050
+      button_coord(34,4)=1150
+      button_text$(34)="    Start"
+      button_col(34)=12
+      button_tcol(34)=7
+
+      button_coord(35,1)=600
+      button_coord(35,2)=960
+      button_coord(35,3)=1050
+      button_coord(35,4)=1150
+      button_text$(35)="     Stop"
+      button_col(35)=12
+      button_tcol(35)=7
+
+
+
+
+      rem start the program -------------------------------------
+
+
+      procSTART
+
+      *refresh off
+      procMAINLOOP
+
+      end
+
+
+
+
+
+      defprocMAINLOOP
+
+      repeat
+  
+        procINPUT
+  
+      until false
+
+
+
+
+
+      endproc
+
+
+
+
+
+
+      rem Generate an RNA chain ----------------------------------
+
+      defprocGENERATECHAIN
+
+      off
+
+      xoff=620
+      yoff=-80
+      scf=12
+
+
+      mouse on 2
+
+      RP%=0 :rem define array pointer for structure generation
+      repeat
+        RP%=RP%+1
+  
+        if RP% mod 10=0 then procPROGRESS(250,100,(RP%/links)*100,2)
+  
+        if time mod 1=0 then
+          *font lucida console,14
+          colour 7
+          colour 136
+    
+          printtab(30,53);RP%;" / ";links-1;"       "
+    
+          colour 128
+    
+        endif
+  
+        *refresh
+  
+  
+        theta=0
+        magV1=0
+        magV3=0
+        reroll_loc=RP%
+        reroll_time=time
+  
+        repeat
+          fail$="false"
+          Overlap$="false"
+    
+    
+          aziran=rnd(rpc)/rpc
+          incran=rnd(rpc)/rpc
+          azi=2*pi*aziran
+          inc=acs(2*incran-1)
+    
+    
+          SPoints(RP%,1)=Kuhn*sin(inc)*cos(azi)+SPoints(RP%-1,1)
+          SPoints(RP%,2)=Kuhn*sin(inc)*sin(azi)+SPoints(RP%-1,2)
+          SPoints(RP%,3)=Kuhn*cos(inc)+SPoints(RP%-1,3)
+    
+    
+          if RP%>1 then
+      
+            pvecP1X=SPoints(RP%-2,1)
+            pvecP1Y=SPoints(RP%-2,2)
+            pvecP1Z=SPoints(RP%-2,3)
+      
+            pvecP2X=SPoints(RP%,1)
+            pvecP2Y=SPoints(RP%,2)
+            pvecP2Z=SPoints(RP%,3)
+      
+            pvecCX=SPoints(RP%-1,1)
+            pvecCY=SPoints(RP%-1,2)
+            pvecCZ=SPoints(RP%-1,3)
+      
+            vecV1X=pvecP1X-pvecCX
+            vecV1Y=pvecP1Y-pvecCY
+            vecV1Z=pvecP1Z-pvecCZ
+      
+            vecV2X=pvecP2X-pvecCX
+            vecV2Y=pvecP2Y-pvecCY
+            vecV2Z=pvecP2Z-pvecCZ
+      
+            vecV3X=pvecP2X-pvecP1X
+            vecV3Y=pvecP2Y-pvecP1Y
+            vecV3Z=pvecP2Z-pvecP1Z
+      
+      
+            magV1=sqr(vecV1X^2+vecV1Y^2+vecV1Z^2)
+            magV2=sqr(vecV2X^2+vecV2Y^2+vecV2Z^2)
+            magV3=sqr(vecV3X^2+vecV3Y^2+vecV3Z^2)
+      
+            cstheta=abs((vecV1X*vecV2X+vecV1Y*vecV2Y+vecV1Z*vecV2Z)/(magV1*magV2))
+      
+      
+            theta=deg(acs(cstheta))
+      
+      
+          endif
+    
+    
+          if magV3>magV1*sqr(2) then theta=180-theta
+    
+    
+    
+    
+    
+          if RP%>2 then
+      
+      
+            rem Joint Overlap Constraint - test current point against all previous.
+      
+      
+            for PT_test%=0 to RP%-3
+        
+              bases_dist=sqr((SPoints(RP%,1)-SPoints(PT_test%,1))^2+(SPoints(RP%,2)-SPoints(PT_test%,2))^2+(SPoints(RP%,3)-SPoints(PT_test%,3))^2)
+        
+              Kuhn_dist=bases_dist/Kuhn
+        
+              if Kuhn_dist<Overlap_Const then Overlap$="true":reroll_loc=RP%:reroll_time=time
+        
+        
+            next
+      
+      
+      
+      
+          endif
+    
+          rem print RP%
+    
+          if RP%=reroll_loc and time>reroll_time+100 then RP%=RP%-10:fail$="true"
+    
+    
+        until theta > Angle_Const and Overlap$="false" or RP%=1 or fail$="true"
+  
+  
+      until RP%=links-1
+
+
+
+      rem move the centre of mass of the chain to thge origin
+
+      suX=0
+      suY=0
+      suZ=0
+
+      for RP%=0 to links-1
+  
+        suX=suX+SPoints(RP%,1)
+        suY=suY+SPoints(RP%,2)
+        suZ=suZ+SPoints(RP%,3)
+  
+      next
+
+      suX=suX/links
+      suY=suY/links
+      suZ=suZ/links
+
+
+      for RP%=0 to links-1
+  
+        SPoints(RP%,1)=SPoints(RP%,1)-suX
+        SPoints(RP%,2)=SPoints(RP%,2)-suY
+        SPoints(RP%,3)=SPoints(RP%,3)-suZ
+  
+      next
+
+
+
+      wait 20
+
+      mouse on 0
+
+      colour 128
+
+      endproc
+
+
+
+
+
+
+      rem Setup screen and prompt user for input
+
+
+      defprocSTART
+
+      wait 20
+
+      procRENDER
+
+      for wsp%=0 to 2
+        procDIAGRAM(1900+wsp%,800+wsp%,800,400,7)
+      next
+
+      gcol 7
+
+
+      vdu 5
+
+      *font lucida console,14
+
+      move 1950,1440
+      print "BIOPOLYMER SIMULATION"
+
+      vdu 4
+
+      *font lucida console,12
+
+      printtab(98,27);"Reminder: Set up a directory for simulation data"
+      printtab(98,28);"from the filing tab before starting a simulation"
+
+
+
+
+      repeat
+  
+        mouse mx,my,mz
+  
+        if mx>2250 and mx<2660 and my>890 and my<990 then
+    
+          for wsp%=0 to 6 step 2
+            procBUTTON(2250+wsp%,900+wsp%,200,2)
+          next
+    
+          gcol 15
+    
+    
+          vdu 5
+    
+          *font lucida console,14
+    
+          move 2350,940
+          print "     "
+          move 2350,940
+          print "Begin"
+    
+          vdu 4
+    
+    
+        endif
+  
+  
+  
+        if mx<2250 or mx>2660 or my<890 or my>990 then
+    
+          for wsp%=0 to 6 step 2
+            procBUTTON(2250+wsp%,900+wsp%,200,7)
+          next
+    
+          gcol 7
+    
+    
+          vdu 5
+    
+          *font lucida console,14
+    
+          move 2350,940
+          print "     "
+          move 2350,940
+          print "Begin"
+    
+          vdu 4
+    
+    
+        endif
+  
+  
+  
+      until mx>2250 and mx<2660 and my>890 and my<990 and mz=4
+
+      cls
+
+      procRENDER
+
+
+
+
+      endproc
+
+
+
+
+
+
+
+      rem render workspace / gui
+
+      defprocRENDER
+
+      if CustomPNT1=-1 or CustomPNT2=-1 then GUI_custom=false
+
+
+      if IS_STRUC%=1 then procRENDERCHAIN
+
+      gcol 8
+      rectangle fill 0,0,1150,2160
+      rectangle fill 1150,0,3000,30
+      rectangle fill 3810,0,30,2160
+      move 1150,2000
+      move 1310,2160
+      plot 85,1150,2160
+      move 3640,0
+      move 3840,200
+      plot 85,3840,0
+
+
+      if INV_IN%=true then procINVALIDINPUT
+
+
+      for wsp%=0 to 4
+        procWORKSPACE(1150-wsp%,30+wsp%,28,7)
+      next
+
+
+      for wsp%=0 to 4 step 2
+  
+  
+        diagCOL%=8
+        if GUImode<>0 then diagCOL%=15
+  
+        procDIAGRAM(80+wsp%,600+wsp%,700,1100,diagCOL%)
+  
+  
+        procBUTTON(80+wsp%,400+wsp%,250,button_col(1))
+        procBUTTON(600+wsp%,400+wsp%,250,button_col(2))
+        procBUTTON(80+wsp%,270+wsp%,250,button_col(3))
+        procBUTTON(600+wsp%,270+wsp%,250,button_col(4))
+  
+  
+  
+      next
+
+
+      vdu 5
+
+      *font lucida console,13
+
+      for btn%=1 to 4
+  
+        gcol 0,button_tcol(btn%)
+  
+        move button_coord(btn%,1)+40,button_coord(btn%,3)+50
+  
+        print button_text$(btn%)
+  
+      next
+
+      vdu 4
+
+      if GUImode=1 then procRENDERG1
+      if GUImode=2 then procRENDERG2
+      if GUImode=3 then procRENDERG3
+      if GUImode=4 then procRENDERG4
+
+
+
+
+
+      endproc
+
+
+
+
+
+      defprocRENDERG1
+
+      *font lucida console,14
+
+      vdu 5
+
+      gcol 7
+
+      move 120,1940
+      print button_text$(1)
+
+      move 160,1840
+      print "Chain Properties"
+
+
+      move 160,1370
+      print "Constraint Properties"
+
+      *font lucida console,12
+
+      move 180,1780
+      print "Kuhn Length units: Nucleotides."
+      move 180,1750
+      print "E.g. Single stranded RNA Kuhn = 6 bases"
+
+
+
+      vdu 4
+
+      for wsp%=0 to 2 step 2
+        procDIAGRAM(120+wsp%,1450+wsp%,640,150,7)
+        procDIAGRAM(120+wsp%,750+wsp%,640,380,7)
+  
+        procBUTTON(500+wsp%,1600+wsp%,150,button_col(5))
+        procBUTTON(500+wsp%,1470+wsp%,150,button_col(6))
+  
+        procBUTTON(600+wsp%,900+wsp%,150,button_col(7))
+        procBUTTON(600+wsp%,770+wsp%,150,button_col(8))
+  
+        procBUTTON(500+wsp%,1160+wsp%,150,button_col(9))
+        procBUTTON(500+wsp%,1030+wsp%,150,button_col(10))
+  
+        procBUTTON(280+wsp%,620+wsp%,470,button_col(11))
+  
+  
+      next
+
+      vdu 5
+
+      *font lucida console,12
+
+      gcol 7
+
+      move 250,1640
+      print "KUHN LENGTH"
+      move 900,1654
+      print "";Kuhn
+
+      move 250,1510
+      print "CHAIN LINKS"
+      move 900,1524
+      print "";links-1
+
+
+      move 160,1200
+      print "Angle Constraint"
+      move 900,1214
+      print "";Angle_Const;" deg"
+
+
+      move 140,1070
+      print "Steric Constraint"
+      move 900,1084
+      print "";Overlap_Const;" K."
+
+      *font lucida console,12
+
+
+      for btn%=5 to 11
+  
+        gcol 0,button_tcol(btn%)
+  
+        move button_coord(btn%,1)+20,button_coord(btn%,3)+50
+  
+        print button_text$(btn%)
+  
+      next
+
+      vdu 4
+
+
+
+      endproc
+
+
+
+
+
+      defprocRENDERG2
+
+      *font lucida console,14
+
+      vdu 5
+
+      gcol 7
+
+      move 120,1940
+
+      print button_text$(2)
+
+      move 160,1840
+      print "Display"
+
+      move 160,1120
+      print "Colour"
+
+
+
+      *font lucida console,12
+
+
+      *font lucida console,12
+
+      gcol 7
+
+      move 230,1440
+      print "Custom position 1"
+
+      move 230,1310
+      print "Custom position 2"
+
+
+      for btn%=12 to 21
+  
+        gcol 0,button_tcol(btn%)
+  
+        move button_coord(btn%,1)+20,button_coord(btn%,3)+50
+  
+        print button_text$(btn%)
+  
+      next
+
+      vdu 4
+
+
+      for wsp%=0 to 2 step 2
+  
+        procDIAGRAM(120+wsp%,1200+wsp%,640,400,7)
+        procDIAGRAM(120+wsp%,640+wsp%,640,240,7)
+  
+      next
+
+
+
+      for wsp%=0 to 2 step 2
+  
+        for btn%=12 to 21
+    
+          procBUTTON(button_coord(btn%,1)+wsp%,button_coord(btn%,3)+wsp%+10,150,button_col(btn%))
+    
+        next
+  
+      next
+
+
+      endproc
+
+
+
+
+
+
+
+      defprocRENDERG3
+
+      *font lucida console,14
+
+      vdu 5
+
+      gcol 7
+
+      move 120,1940
+
+      print button_text$(3)
+
+      move 160,1840
+      print "Structure"
+
+      move 160,1320
+      print "Simulation"
+
+      *font lucida console,12
+
+      move 160,1240
+      print "Before Beginning a simulation, a Directory"
+      move 160,1210
+      print "and File must be created so the program"
+      move 160,1180
+      print "has a location to store simulation output."
+
+      *font lucida console,11
+
+      for btn%=25 to 28
+  
+        gcol 0,button_tcol(btn%)
+  
+        move button_coord(btn%,1)+40,button_coord(btn%,3)+50
+  
+        print button_text$(btn%)
+  
+      next
+
+      *font lucida console,14
+
+      for btn%=29 to 29
+  
+        gcol 0,button_tcol(btn%)
+  
+        move button_coord(btn%,1)+10,button_coord(btn%,3)+50
+  
+        print button_text$(btn%)
+  
+      next
+
+
+      vdu 4
+
+      for wsp%=0 to 2 step 2
+  
+        procDIAGRAM(120+wsp%,1400+wsp%,640,200,7)
+        procDIAGRAM(120+wsp%,640+wsp%,640,440,7)
+  
+      next
+
+      for wsp%=0 to 2 step 2
+  
+        for btn%=25 to 29
+    
+          procBUTTON(button_coord(btn%,1)+wsp%,button_coord(btn%,3)+wsp%+10,150,button_col(btn%))
+    
+        next
+  
+      next
+
+
+
+
+      endproc
+
+
+
+
+
+
+      defprocRENDERG4
+
+      *font lucida console,14
+
+      vdu 5
+
+      gcol 7
+
+      move 120,1940
+
+      print button_text$(4)
+
+
+
+      if sim_file_path$<>"" then
+  
+  
+        move 160,1840
+        print "Parameters"
+  
+        *font lucida console,12
+  
+        move 220,1700
+        print "        Iterations"
+  
+        move 220,1570
+        print "     Time interval"
+  
+        move 220,1440
+        print "Diffusion constant"
+  
+        move 220,1310
+        print "   Steric constant"
+  
+  
+  
+        for btn%=30 to 35
+    
+          gcol 0,button_tcol(btn%)
+    
+          move button_coord(btn%,1)+20,button_coord(btn%,3)+50
+    
+          print button_text$(btn%)
+    
+        next
+  
+  
+        vdu 4
+  
+        for wsp%=0 to 2 step 2
+    
+          procDIAGRAM(120+wsp%,1200+wsp%,640,400,7)
+    
+        next
+  
+        for wsp%=0 to 2 step 2
+    
+          for btn%=30 to 35
+      
+            procBUTTON(button_coord(btn%,1)+wsp%,button_coord(btn%,3)+wsp%+10,150,button_col(btn%))
+      
+          next
+    
+        next
+  
+  
+      else
+  
+        for wsp%=0 to 2 step 2
+    
+          procDIAGRAM(120+wsp%,1400+wsp%,640,200,1)
+    
+        next
+  
+        gcol 7
+  
+        vdu 5
+  
+        *font lucida console,14
+  
+        move 160,1840
+        print "Reminder..."
+  
+        *font lucida console,12
+  
+        move 160,1700
+        print "Please create a file for data output from"
+        move 160,1670
+        print "the file tab before beginning a simulation."
+  
+  
+        vdu 4
+  
+      endif
+
+
+      endproc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      rem rotate coordinates of point in array element n by angle degrees in axis x y or z - arguments - (array element n,angle in degrees,rotation axis) output stored in newX,newY,newZ and reinserted into array element n
+
+      defprocROTATE(pN%,angle_deg_in,axis_in$)
+
+      procPOPULATE(angle_deg_in)
+      procCOMPUTE(SPoints(pN%,1),SPoints(pN%,2),SPoints(pN%,3),axis_in$)
+      SPoints(pN%,1)=newX
+      SPoints(pN%,2)=newY
+      SPoints(pN%,3)=newZ
+
+      endproc
+
+      rem populate rotation matrices  - arguments - (angle in degrees)
+
+      defprocPOPULATE(angle_deg)
+
+      angle_rad=rad(angle_deg)
+
+      Rx(1,1)=0
+      Rx(2,1)=sin(angle_rad)
+      Rx(3,1)=cos(angle_rad)
+      Rx(1,2)=0
+      Rx(2,2)=cos(angle_rad)
+      Rx(3,2)=-sin(angle_rad)
+      Rx(1,3)=1
+      Rx(2,3)=0
+      Rx(3,3)=0
+
+      Ry(1,1)=-sin(angle_rad)
+      Ry(2,1)=0
+      Ry(3,1)=cos(angle_rad)
+      Ry(1,2)=0
+      Ry(2,2)=1
+      Ry(3,2)=0
+      Ry(1,3)=cos(angle_rad)
+      Ry(2,3)=0
+      Ry(3,3)=sin(angle_rad)
+
+      Rz(1,1)=0
+      Rz(2,1)=0
+      Rz(3,1)=1
+      Rz(1,2)=sin(angle_rad)
+      Rz(2,2)=cos(angle_rad)
+      Rz(3,2)=0
+      Rz(1,3)=cos(angle_rad)
+      Rz(2,3)=-sin(angle_rad)
+      Rz(3,3)=0
+
+      endproc
+
+      rem compute new point coordinates - arguments - (x,y,z,rotation axis)
+
+      defprocCOMPUTE(rotx,roty,rotz,axis$)
+
+      if axis$="x" then
+  
+        newX=rotx*Rx(1,3)+roty*Rx(2,3)+rotz*Rx(3,3)
+        newY=rotx*Rx(1,2)+roty*Rx(2,2)+rotz*Rx(3,2)
+        newZ=rotx*Rx(1,1)+roty*Rx(2,1)+rotz*Rx(3,1)
+  
+      endif
+
+      if axis$="y" then
+  
+        newX=rotx*Ry(1,3)+roty*Ry(2,3)+rotz*Ry(3,3)
+        newY=rotx*Ry(1,2)+roty*Ry(2,2)+rotz*Ry(3,2)
+        newZ=rotx*Ry(1,1)+roty*Ry(2,1)+rotz*Ry(3,1)
+  
+      endif
+
+      if axis$="z" then
+  
+        newX=rotx*Rz(1,3)+roty*Rz(2,3)+rotz*Rz(3,3)
+        newY=rotx*Rz(1,2)+roty*Rz(2,2)+rotz*Rz(3,2)
+        newZ=rotx*Rz(1,1)+roty*Rz(2,1)+rotz*Rz(3,1)
+  
+      endif
+
+      endproc
+
+
+      defprocINPUT
+
+
+      repeat
+  
+        mouse mx,my,mz
+  
+  
+        for btn%=1 to 4
+    
+          if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=2:button_tcol(btn%)=9
+          if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=15:button_tcol(btn%)=7
+          if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:GUImode=btn%
+    
+        next
+  
+        if GUImode=1 then
+    
+          for btn%=5 to 11
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=3:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=5:button_tcol(btn%)=7
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:procPROPERTIESINPUT
+      
+      
+          next
+    
+          if mx<button_coord(11,1) or mx>button_coord(11,2) or my<button_coord(11,3) or my>button_coord(11,4) then button_col(11)=2:button_tcol(btn%)=7
+          if mx<button_coord(7,1) or mx>button_coord(7,2) or my<button_coord(7,3) or my>button_coord(7,4) then button_col(7)=12:button_tcol(btn%)=7
+          if mx<button_coord(8,1) or mx>button_coord(8,2) or my<button_coord(8,3) or my>button_coord(8,4) then button_col(8)=12:button_tcol(btn%)=7
+    
+        endif
+  
+  
+  
+        if GUImode=2 then
+    
+          for btn%=12 to 15
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=3:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=12:button_tcol(btn%)=7
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:procTOGGLE_ELEMENTS
+      
+          next
+    
+          for btn%=16 to 17
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=3:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=5:button_tcol(btn%)=7
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:procPROPERTIESINPUT
+      
+      
+          next
+    
+          for btn%=18 to 21
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=15:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=GUI_col(btn%-17):button_tcol(btn%)=7
+      
+          next
+    
+    
+        endif
+  
+        if GUImode=3 then
+    
+    
+          for btn%=25 to 29
+      
+            if btn%<>25 and btn%<>27 and btn%<>28 then
+              if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=15:button_tcol(btn%)=9
+              if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=12:button_tcol(btn%)=7
+              if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:procFILEMENU
+            endif
+      
+            if IS_STRUC%=1 and btn%<>28 then
+              if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=15:button_tcol(btn%)=9
+              if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=12:button_tcol(btn%)=7
+              if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:procFILEMENU
+            endif
+      
+      
+      
+          next
+    
+        endif
+  
+        if GUImode=4 and sim_file_path$<>"" then
+    
+          for btn%=30 to 35
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=3:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=5:button_tcol(btn%)=7
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 and btn%<>34 and btn%<>35 then button_col(btn%)=1:button_tcol(btn%)=8:procPARAMETERINPUT
+      
+      
+      
+            if btn%=34 then
+        
+              if IS_STRUC%=1 then
+                if mx<button_coord(34,1) or mx>button_coord(34,2) or my<button_coord(34,3) or my>button_coord(34,4) then button_col(34)=12:button_tcol(34)=7
+          
+                if iteration%<>-1 and sim_interval<>-1 and Diffusion_const<>-1 and Steric_Const<>-1 then
+                  if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 and btn%=34 then button_col(btn%)=1:button_tcol(btn%)=15:procSIMULATE
+                endif
+          
+              endif
+        
+              if IS_STRUC%=0 then button_col(34)=13:button_tcol(34)=13
+              if iteration%=-1 or sim_interval=-1 or Diffusion_const=-1 or Steric_Const=-1 then button_col(34)=13:button_tcol(34)=13
+        
+            endif
+      
+          next
+    
+    
+          if mx<button_coord(35,1) or mx>button_coord(35,2) or my<button_coord(35,3) or my>button_coord(35,4) then button_col(35)=12:button_tcol(35)=7
+    
+    
+        endif
+  
+        cls
+        procRENDER
+        *refresh
+  
+  
+      until mz<>0
+
+      if mx>1150 and mx<3800 and my>40 and my<2000 and IS_STRUC%=1 procVIEWERTRANSFORM
+
+      endproc
+
+
+
+      defprocPROPERTIESINPUT
+
+      for greyout%=1 to 21
+        button_col(greyout%)=13
+        button_tcol(greyout%)=13
+      next
+
+      if btn%=7 or btn%=8 or btn%=11 then button_col(btn%)=1:button_tcol(btn%)=15
+
+
+      cls
+
+      if btn%<>7 and btn%<>8 and btn%<>11 then
+        button_tcol(btn%)=8
+        button_col(btn%)=1
+      endif
+
+      btn2%=btn%
+
+      procRENDER
+      *refresh
+
+      *refresh on
+
+      on
+
+      *font lucida console,10
+      colour 15
+      colour 136
+
+      if btn2%=5 then
+        inputtab(36,16) "" Kuhn_in
+  
+        if Kuhn_in>=1 and Kuhn_in<100000 then Kuhn=Kuhn_in:INV_IN%=false else INV_IN%=true
+  
+      endif
+
+      if btn2%=6 then
+  
+        inputtab(36,21) "" links_in%
+  
+        if links_in%>3 and links_in%<10000 then links=links_in%+1:INV_IN%=false:IS_STRUC%=0 else INV_IN%=true
+  
+        if links-1<CustomPNT1 or links-1<CustomPNT2 then CustomPNT1=-1:CustomPNT2=-1:button_text$(16)=" Enter a value":button_text$(17)=" Enter a value"
+  
+      endif
+
+      if btn2%=7 then
+        rem save properties to a file
+      endif
+
+      if btn2%=8 then
+        rem load dynamic constraints from a file
+      endif
+
+      if btn2%=9 then
+        inputtab(36,33) "" Angle_Const_in
+  
+        if Angle_Const_in<178 then Angle_Const=Angle_Const_in:INV_IN%=false else INV_IN%=true
+  
+      endif
+      if btn2%=10 then
+        inputtab(36,38) "" Overlap_Const_in
+  
+        if Overlap_Const_in<2 then Overlap_Const=Overlap_Const_in:INV_IN%=false else INV_IN%=true
+  
+      endif
+
+      if btn2%=16 then
+        inputtab(43,24) "" Custom1_in%
+  
+        if Custom1_in%>=0 and Custom1_in%<=links-1 and Custom1_in%<>CustomPNT2 then CustomPNT1=Custom1_in%:INV_IN%=false:button_text$(16)="   "+str$(Custom1_in%) else INV_IN%=true
+  
+      endif
+
+      if btn2%=17 then
+        inputtab(43,29) "" Custom2_in%
+  
+        if Custom2_in%>=0 and Custom2_in%<=links-1 and Custom2_in%<>CustomPNT1 then CustomPNT2=Custom2_in%:INV_IN%=false:button_text$(17)="   "+str$(Custom2_in%) else INV_IN%=true
+  
+      endif
+
+
+
+
+      colour 128
+
+      if btn2%=11 then
+        procGENERATECHAIN
+        IS_STRUC%=1
+      endif
+
+
+
+      *refresh off
+      off
+
+      endproc
+
+
+
+
+      rem render the chain in the specified screen space
+
+      defprocRENDERCHAIN
+
+
+
+      move SPoints(0,2)*scf+1920+xoff,SPoints(0,3)*scf+1080+yoff
+
+      for DISP%=0 to links-1
+  
+  
+        if DISP% mod 2 = 0 then gcol GUI_col(1) else gcol GUI_col(2)
+  
+  
+        draw SPoints(DISP%,2)*scf+1920+xoff,SPoints(DISP%,3)*scf+1080+yoff
+  
+      next
+
+      if GUI_label=true then
+        vdu 5
+        oscli "font lucida console,"+str$(6+int(0.1*scf))
+  
+        gcol 7
+  
+        for DISP%=0 to links-1
+    
+          move SPoints(DISP%,2)*scf+1920+xoff+10,SPoints(DISP%,3)*scf+1080+yoff+10
+          print "";DISP%
+    
+        next
+  
+        vdu 4
+      endif
+
+
+
+
+      if GUI_balls=true then
+  
+        gcol 7
+  
+        for DISP%=0 to links-1
+    
+          circle fill SPoints(DISP%,2)*scf+1920+xoff,SPoints(DISP%,3)*scf+1080+yoff,8
+    
+        next
+  
+      endif
+
+      gcol GUI_col(3)
+
+
+      if GUI_balls=true and GUI_end=true then
+  
+        circle fill SPoints(0,2)*scf+1920+xoff,SPoints(0,3)*scf+1080+yoff,12
+        circle fill SPoints(links-1,2)*scf+1920+xoff,SPoints(links-1,3)*scf+1080+yoff,12
+  
+      endif
+
+      gcol GUI_col(4)
+
+
+      if GUI_balls=true and GUI_custom=true then
+  
+        circle fill SPoints(CustomPNT1,2)*scf+1920+xoff,SPoints(CustomPNT1,3)*scf+1080+yoff,12
+        circle fill SPoints(CustomPNT2,2)*scf+1920+xoff,SPoints(CustomPNT2,3)*scf+1080+yoff,12
+  
+      endif
+
+
+
+
+
+      if GUI_label=true and GUI_end=true then
+  
+  
+        EtED_bases=sqr((SPoints(links-1,1)-SPoints(0,1))^2+(SPoints(links-1,2)-SPoints(0,2))^2+(SPoints(links-1,3)-SPoints(0,3))^2)
+  
+        EtED=EtED_bases/Kuhn
+  
+  
+        gcol GUI_col(3)
+  
+        *font lucida console,10
+  
+        vdu 5
+  
+        move SPoints(0,2)*scf+1920+xoff+30,SPoints(0,3)*scf+1080+yoff+30
+  
+        print "End to End Distance: ";EtED;" Kuhns"
+  
+      endif
+
+
+
+
+      if GUI_label=true and GUI_custom=true then
+  
+  
+        EtED_bases=sqr((SPoints(CustomPNT1,1)-SPoints(CustomPNT2,1))^2+(SPoints(CustomPNT1,2)-SPoints(CustomPNT2,2))^2+(SPoints(CustomPNT1,3)-SPoints(CustomPNT2,3))^2)
+  
+        EtED=EtED_bases/Kuhn
+  
+  
+        gcol GUI_col(4)
+  
+        *font lucida console,10
+  
+        vdu 5
+  
+        move SPoints(CustomPNT2,2)*scf+1920+xoff+30,SPoints(CustomPNT2,3)*scf+1080+yoff+30
+  
+        print "Custom Distance: ";EtED;" Kuhns"
+  
+      endif
+
+
+
+
+      gcol GUI_col(3)
+
+      if GUI_end=true then
+  
+        move SPoints(0,2)*scf+1920+xoff,SPoints(0,3)*scf+1080+yoff
+        plot 21,SPoints(links-1,2)*scf+1920+xoff,SPoints(links-1,3)*scf+1080+yoff
+  
+      endif
+
+
+      gcol GUI_col(4)
+
+      if GUI_custom=true then
+  
+        move SPoints(CustomPNT1,2)*scf+1920+xoff,SPoints(CustomPNT1,3)*scf+1080+yoff
+        plot 21,SPoints(CustomPNT2,2)*scf+1920+xoff,SPoints(CustomPNT2,3)*scf+1080+yoff
+  
+      endif
+
+
+
+      endproc
+
+
+
+
+      defprocVIEWERTRANSFORM
+
+
+      repeat
+  
+  
+        repeat
+    
+          mouse mx,my,mz
+    
+          if mz=0 then mouse on 0
+          if mz=1 then mouse on 137
+          if mz=2 then mouse on 133
+          if mz=4 then mouse on 134
+    
+    
+        until mz<>0 or mx<1150
+  
+        wait 1
+  
+        mouse mx2,my2,mz2
+  
+        key_in$=inkey$(0)
+  
+        if key_in$="z" or key_in$="Z" then scf*=1.25
+        if key_in$="x" or key_in$="X" then scf*=0.8
+  
+  
+        if mz2=1 and mx>1150 and mx<3800 and my>40 and my<2100 then
+    
+    
+          for DISP%=0 to links-1
+      
+            procROTATE(DISP%,-(my2-my)/2,"y")
+            procROTATE(DISP%,(mx2-mx)/2,"z")
+      
+          next
+    
+        endif
+  
+  
+  
+  
+        if mz2=2 and mx>1150 and mx<3800 and my>40 and my<2100 then scf=scf*(1+((my2-my)/100))
+        if mz2=5 and mx>1150 and mx<3800 and my>40 and my<2100 then scf=scf*(1+((my2-my)/100))
+  
+        if mz2=4 and mx>1150 and mx<3800 and my>40 and my<2100 then
+    
+          xoff=xoff+(mx2-mx)*3.5
+          yoff=yoff+(my2-my)*3.5
+    
+    
+        endif
+  
+        cls
+        procRENDER
+        *refresh
+  
+  
+      until mx2<1150
+
+      endproc
+
+
+
+
+      defprocINVALIDINPUT
+
+      *font lucida console,15
+
+      colour 1
+      colour 136
+
+      printtab(3,1);"INVALID PARAMETER - Please Re-enter."
+
+      colour 128
+
+
+      endproc
+
+
+
+
+
+      defprocTOGGLE_ELEMENTS
+
+      pbtn%=btn%
+
+      cls
+      procRENDER
+      *refresh
+
+      if pbtn%=12 and GUI_balls=false then GUI_balls=true else if pbtn%=12 and GUI_balls=true then GUI_balls=false
+
+      if pbtn%=13 and GUI_label=false then GUI_label=true else if pbtn%=13 and GUI_label=true then GUI_label=false
+
+      if pbtn%=14 and GUI_end=false then GUI_end=true else if pbtn%=14 and GUI_end=true then GUI_end=false
+
+      if pbtn%=15 and GUI_custom=false then GUI_custom=true else if pbtn%=15 and GUI_custom=true then GUI_custom=false
+
+      repeat
+  
+        mouse mx3,my3,mz3
+  
+      until mz3<>4
+
+      endproc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      rem Internalised GUI library ---------------------
+
+
+
+      rem DIAGRAM TEMPLATE
+
+      rem PARAMETERS -- X COORDINATE, Y COORDINATE, WIDTH, HEIGHT, COLOUR
+
+
+
+      defprocDIAGRAM(DX,DY,DW,DL,DC)
+      gcol 0,DC
+      move DX,DY
+      draw DX,DY+20+DL+100
+      draw DX-20,DY+40+DL+100
+      draw DX-20,DY+100+DL+100
+      draw DX+40,DY+160+DL+100
+      draw DX+40+DW+100,DY+160+DL+100
+      draw DX+60+DW+100,DY+180+DL+100
+      draw DX+120+DW+100,DY+180+DL+100
+      draw DX+200+DW+100,DY+100+DL+100
+      draw DX+200+DW+100,DY-20
+      draw DX+20,DY-20
+      draw DX,DY
+      move DX-20,DY+100+DL+100
+      draw DX+200+DW+100,DY+100+DL+100
+      endproc
+
+
+
+      rem PROGRESS BAR ----------------------------------------------------
+
+
+      rem PARAMETERS -- X COORDINATE, Y COORDINATE, PERCENATGE, COLOUR
+
+
+
+      defprocPROGRESS(PX,PY,PERCENT,PC)
+      gcol 0,PC
+      move PX,PY
+      draw PX,PY+60
+      draw PX+20,PY+80
+      draw PX+80,PY+80
+      draw PX+100,PY+60
+      draw PX+300,PY+60
+      draw PX+310,PY+70
+      draw PX+360,PY+70
+      draw PX+360,PY+20
+      draw PX+340,PY
+      draw PX+80,PY
+      draw PX+60,PY+20
+      draw PX+20,PY+20
+      draw PX,PY
+      rectangle PX+100,PY+20,220,20
+      rectangle fill PX+100,PY+20,(PERCENT/100)*220,20
+      endproc
+
+
+
+      rem CLICKABLE BUTTON ---------------------------------------------
+
+
+
+      rem PARAMETERS -- X COORDINATE, Y COORDINATE, LENGTH, COLOUR
+
+
+
+      defprocBUTTON(BX,BUY,BL,BC)
+      gcol 0,BC
+      move BX,BUY
+      draw BX,BUY+50
+      draw BX+20,BUY+70
+      draw BX+70,BUY+70
+      draw BX+80,BUY+60
+      draw BX+100+BL,BUY+60
+      draw BX+120+BL,BUY+80
+      draw BX+170+BL,BUY+80
+      draw BX+210+BL,BUY+40
+      draw BX+160+BL,BUY-10
+      draw BX+10,BUY-10
+      draw BX,BUY
+      move BX,BUY+60
+      draw BX+10,BUY+70
+      move BX+170+BL,BUY-10
+      draw BX+210+BL,BUY+30
+      endproc
+
+
+
+      rem WORKSPACE AREA ------------------------------------------------
+
+
+
+      rem PARAMETERS -- X COORDINATE, Y COORDINATE, SCALE, COLOUR
+
+
+
+      defprocWORKSPACE(WX,WY,WS,WC)
+      gcol 0,WC
+      move WX,WY
+      draw WX+90*WS,WY
+      draw WX+95*WS,WY+5*WS
+      draw WX+95*WS,WY+75*WS
+      draw WX+5*WS,WY+75*WS
+      draw WX,WY+70*WS
+      draw WX,WY
+      endproc
+
+
+
+      rem create simultion file - credit - ditto
+
+      defprocCREATEFILE
+
+      filename$=""
+
+      ff$ = "Simulation file (the .smtn suffix and iter # will be appended automatically)"+chr$0+"*.smtn*"+chr$0+chr$0
+      fs.lpstrFilter% = ptr(ff$)
+
+
+      sys "GetSaveFileName", fs{} to result%
+      if result% filename$ = $$fp{}
+
+      if result% sim_file_path$=filename$
+
+      endproc
+
+
+      defprocFILEMENU
+
+      btn4%=btn%
+
+      cls
+      procRENDER
+      *refresh
+
+      if btn4%=25 then procSAVESTRUC
+      if btn4%=26 then procLOADSTRUC
+      if btn4%=27 then procEXPORTSTRUC
+      if btn4%=28 then procIMPORTSTRUC
+      if btn4%=29 then procCREATEFILE
+
+
+
+      endproc
+
+
+
+      defprocSAVESTRUC
+
+      structure_path$=""
+
+
+
+      ff$ = "Compatible structure file (the .struc suffix will be appended automatically)"+chr$0+"*.struc*"+chr$0+chr$0
+      fs.lpstrFilter% = ptr(ff$)
+
+      sys "GetSaveFileName", fs{} to result%
+      if result% filename$ = $$fp{}
+
+      if result% structure_path$=filename$
+
+      if structure_path$<>"" then
+  
+        if right$(filename$,6)<>".struc" then structure_path$=structure_path$+".struc"
+  
+        SA_savestruc=openout structure_path$
+  
+        print#SA_savestruc,links
+        print#SA_savestruc,Kuhn
+        print#SA_savestruc,Angle_Const
+        print#SA_savestruc,Overlap_Const
+  
+  
+        for saveloop%=0 to links
+    
+          print#SA_savestruc,SPoints(saveloop%,1)
+          print#SA_savestruc,SPoints(saveloop%,2)
+          print#SA_savestruc,SPoints(saveloop%,3)
+    
+        next
+  
+        close#SA_savestruc
+  
+      endif
+
+      wait 20
+
+      endproc
+
+
+
+      defprocLOADSTRUC
+
+      structure_path$=""
+
+
+      ff$ = "Compatible structure file (.struc)"+chr$0+"*.struc*"+chr$0+chr$0
+      fs.lpstrFilter% = ptr(ff$)
+
+      sys "GetOpenFileName", fs{} to result%
+      if result% filename$ = $$fp{}
+
+      if result% structure_path$=filename$
+
+      if structure_path$<>"" then
+  
+        LO_loadstruc=openin structure_path$
+  
+        input#LO_loadstruc,loadlinks
+        input#LO_loadstruc,loadKuhn
+        input#LO_loadstruc,loadAngle_Const
+        input#LO_loadstruc,loadOverlap_Const
+  
+  
+  
+        links=loadlinks
+        Kuhn=loadKuhn
+        Angle_Const=loadAngle_Const
+        Overlap_Const=loadOverlap_Const
+  
+  
+        for loadloop%=0 to links
+    
+          input#LO_loadstruc,loadSPO1
+          input#LO_loadstruc,loadSPO2
+          input#LO_loadstruc,loadSPO3
+    
+          SPoints(loadloop%,1)=loadSPO1
+          SPoints(loadloop%,2)=loadSPO2
+          SPoints(loadloop%,3)=loadSPO3
+    
+        next
+  
+        close#LO_loadstruc
+  
+        IS_STRUC%=1
+  
+        xoff=620
+        yoff=-80
+        scf=12
+  
+        if links-1<CustomPNT1 or links-1<CustomPNT2 then CustomPNT1=-1:CustomPNT2=-1:button_text$(16)=" Enter a value":button_text$(17)=" Enter a value"
+  
+  
+  
+      endif
+
+
+      wait 20
+
+      title$="BioPolymer Simulation - University of Leicester "+"   Current loaded structure: "+structure_path$
+      sys "SetWindowText", @hwnd%, title$
+
+
+      endproc
+
+
+
+
+      defprocBOLTZDIST
+
+
+      for clear_array%=0 to 10
+        btzPNT(clear_array%,1)=0
+        btzPNT(clear_array%,2)=0
+        btzPNT(clear_array%,3)=0
+      next
+
+      diffuse_vecX=0
+      diffuse_vecY=0
+      diffuse_vecZ=0
+
+
+
+      for gen_dist%=1 to 10
+  
+  
+        btzaziran=rnd(rpc)/rpc
+        btzincran=rnd(rpc)/rpc
+        btzazi=2*pi*btzaziran
+        btzinc=acs(2*btzincran-1)
+  
+        btzPNT(gen_dist%,1)=btzMAG*sin(btzinc)*cos(btzazi)+btzPNT(gen_dist%-1,1)
+        btzPNT(gen_dist%,2)=btzMAG*sin(btzinc)*sin(btzazi)+btzPNT(gen_dist%-1,2)
+        btzPNT(gen_dist%,3)=btzMAG*cos(btzinc)+btzPNT(gen_dist%-1,3)
+  
+  
+      next
+
+      diffuse_vecX=btzPNT(8,1)-btzPNT(0,1)
+      diffuse_vecY=btzPNT(8,2)-btzPNT(0,2)
+      diffuse_vecZ=btzPNT(8,3)-btzPNT(0,3)
+
+      endproc
+
+
+
+      defprocPARAMETERINPUT
+
+      for greyout%=30 to 35
+        if greyout%<>btn% then
+          button_col(greyout%)=13
+          button_tcol(greyout%)=13
+        endif
+      next
+
+      btn2%=btn%
+
+
+      cls
+      procRENDER
+      *refresh
+
+      *refresh on
+
+      on
+
+      *font lucida console,10
+      colour 15
+      colour 136
+
+
+      if btn2%=30 then
+        inputtab(43,14) "" iter_in%
+  
+        if iter_in%>=10 and iter_in%<10000000 then iteration%=iter_in%:button_text$(30)="    "+str$(iteration%):INV_IN%=false else INV_IN%=true
+  
+      endif
+
+      if btn2%=31 then
+        inputtab(43,19) "" simint_in
+  
+        if simint_in>0 then sim_interval=simint_in:button_text$(31)="    "+str$(sim_interval):btzMAG=sqr((2/3)*Diffusion_const*sim_interval):INV_IN%=false else INV_IN%=true
+  
+      endif
+
+      if btn2%=32 then
+        inputtab(43,24) "" Diff_in
+  
+        if Diff_in>=0 then Diffusion_const=Diff_in:button_text$(32)="    "+str$(Diffusion_const):btzMAG=sqr((2/3)*Diffusion_const*sim_interval):INV_IN%=false else INV_IN%=true
+  
+      endif
+
+      if btn2%=33 then
+        inputtab(43,29) "" Steric_in
+  
+        if Steric_in>=0 and Steric_in<20 then Steric_Const=Steric_in:button_text$(33)="    "+str$(Steric_Const):INV_IN%=false else INV_IN%=true
+  
+      endif
+
+
+
+      colour 128
+      off
+      *refresh off
+
+      endproc
+
+
+
+
+
+      defprocSIMULATE
+
+      flnmlog$=sim_file_path$+"_log.txt"
+
+
+      oscli "spool "+flnmlog$
+
+      print "End to end distance (Kuhns)"
+      print
+      print
+
+      *spool
+
+
+      sim_loop_iteration%=0
+      repeat
+        sim_loop_iteration%+=1
+  
+        for del_array%=0 to links
+    
+          simPNT(del_array%,1)=0
+          simPNT(del_array%,2)=0
+          simPNT(del_array%,3)=0
+    
+          simMOVE(del_array%,1)=0
+          simMOVE(del_array%,2)=0
+          simMOVE(del_array%,3)=0
+    
+        next
+  
+  
+        for transfer%=0 to links-1
+    
+          simPNT(transfer%,1)=SPoints(transfer%,1)
+          simPNT(transfer%,2)=SPoints(transfer%,2)
+          simPNT(transfer%,3)=SPoints(transfer%,3)
+    
+        next
+  
+  
+        mouse mx,my,mz
+  
+  
+  
+        if mx>1100 then
+    
+          if mz=0 then mouse on 0
+          if mz=1 then mouse on 137
+          if mz=2 then mouse on 133
+          if mz=4 then mouse on 134
+    
+        endif
+  
+        rem input
+  
+        for greyout%=5 to 11
+    
+          button_col(greyout%)=13
+          button_tcol(greyout%)=13
+    
+        next
+  
+        for greyout%=25 to 33
+    
+          button_col(greyout%)=13
+          button_tcol(greyout%)=13
+    
+        next
+  
+  
+  
+  
+        for btn%=1 to 4
+    
+          if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=2:button_tcol(btn%)=9
+          if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=15:button_tcol(btn%)=7
+          if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:GUImode=btn%
+    
+        next
+  
+  
+  
+        if GUImode=2 then
+    
+          for btn%=12 to 15
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=3:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=12:button_tcol(btn%)=7
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:procTOGGLE_ELEMENTS
+      
+          next
+    
+          for btn%=16 to 17
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=3:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=5:button_tcol(btn%)=7
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 then button_col(btn%)=1:button_tcol(btn%)=15:procPROPERTIESINPUT
+      
+      
+          next
+    
+          for btn%=18 to 21
+      
+            if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=15:button_tcol(btn%)=9
+            if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=GUI_col(btn%-17):button_tcol(btn%)=7
+      
+          next
+    
+    
+        endif
+  
+  
+  
+  
+  
+        if GUImode=4 and sim_file_path$<>"" then
+    
+          btn%=35
+    
+          if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) then button_col(btn%)=3:button_tcol(btn%)=9
+          if mx<button_coord(btn%,1) or mx>button_coord(btn%,2) or my<button_coord(btn%,3) or my>button_coord(btn%,4) then button_col(btn%)=12:button_tcol(btn%)=7
+          if mx>button_coord(btn%,1) and mx<button_coord(btn%,2) and my>button_coord(btn%,3) and my<button_coord(btn%,4) and mz=4 and btn%=35 then button_col(btn%)=1:button_tcol(btn%)=15:sim_loop_iteration%=iteration%
+    
+    
+        endif
+  
+  
+  
+  
+        procITERATION
+        wait 1
+  
+        mouse mx2,my2,mz2
+  
+        key_in$=inkey$(0)
+  
+        if key_in$="z" or key_in$="Z" then scf*=1.25
+        if key_in$="x" or key_in$="X" then scf*=0.8
+  
+  
+        if mz2=2 and mx>1150 and mx<3800 and my>40 and my<2100 then scf=scf*(1+((my2-my)/(10*links)))
+        if mz2=5 and mx>1150 and mx<3800 and my>40 and my<2100 then scf=scf*(1+((my2-my)/(10*links)))
+  
+  
+        if mz2=4 and mx>1150 and mx<3800 and my>40 and my<2100 then
+    
+          xoff=xoff+(mx2-mx)*(20/links)
+          yoff=yoff+(my2-my)*(20/links)
+    
+    
+        endif
+  
+  
+  
+  
+  
+  
+  
+  
+        for transfer%=0 to links-1
+    
+          SPoints(transfer%,1)=simPNT(transfer%,1)
+          SPoints(transfer%,2)=simPNT(transfer%,2)
+          SPoints(transfer%,3)=simPNT(transfer%,3)
+    
+    
+          if mz2=1 and mx>1150 and mx<3800 and my>40 and my<2100 then
+      
+            procROTATE(transfer%,-((my2-my)*8)/links,"y")
+            procROTATE(transfer%,((mx2-mx)*8)/links,"z")
+      
+          endif
+    
+    
+        next
+  
+  
+        rem move the centre of mass of the chain to thge origin
+  
+        suX=0
+        suY=0
+        suZ=0
+  
+        for RP%=0 to links-1
+    
+          suX=suX+SPoints(RP%,1)
+          suY=suY+SPoints(RP%,2)
+          suZ=suZ+SPoints(RP%,3)
+    
+        next
+  
+        suX=suX/links
+        suY=suY/links
+        suZ=suZ/links
+  
+  
+        for RP%=0 to links-1
+    
+          SPoints(RP%,1)=SPoints(RP%,1)-suX
+          SPoints(RP%,2)=SPoints(RP%,2)-suY
+          SPoints(RP%,3)=SPoints(RP%,3)-suZ
+    
+        next
+  
+  
+        cls
+  
+  
+        procRENDER
+  
+  
+        procPROGRESS(100,110,(sim_loop_iteration%/iteration%)*100,7)
+  
+        *font lucida console,9
+  
+        gcol 15
+  
+        rectangle 50,60,1050,160
+  
+        vdu 5
+  
+        move 480,170
+        print "         Iteration: ";sim_loop_iteration%;" / ";iteration%
+        move 480,140
+        print "Time elapsed (sim): ";sim_loop_iteration%*sim_interval;" / ";iteration%*sim_interval;" sec"
+  
+        *font lucida console,14
+  
+        move 110,170
+        print "";int((sim_loop_iteration%/iteration%)*100);"%"
+  
+        vdu 4
+  
+        *refresh
+  
+        procSAVESIMDATA
+  
+  
+      until sim_loop_iteration%=iteration%
+
+      endproc
+
+
+
+
+
+
+
+      defprocITERATION
+
+      for diff_loop%=0 to links-1
+  
+        procBOLTZDIST
+  
+        simPNT(diff_loop%,1)=simPNT(diff_loop%,1)+diffuse_vecX
+        simPNT(diff_loop%,2)=simPNT(diff_loop%,2)+diffuse_vecY
+        simPNT(diff_loop%,3)=simPNT(diff_loop%,3)+diffuse_vecZ
+  
+      next
+
+
+      for iter_loop%=1 to SUB_iter%
+  
+  
+        rem compute Kuhn restore and steric repulsion for point 0
+  
+        rem calculate spring extension -----------------
+  
+        spring_X=sqr((simPNT(1,1)-simPNT(0,1))^2+(simPNT(1,2)-simPNT(0,2))^2+(simPNT(1,3)-simPNT(0,3))^2)-Kuhn
+  
+  
+        rem calculate restoring force and displacement in sub-iteration time interval
+  
+        _restore_force=Kspring_const*spring_X
+  
+        _restore_displace=0.5*_restore_force*(0.1/SUB_iter%)^2
+  
+  
+        rem create a unit vector in the direction of force
+  
+        unit_move_vectX=((simPNT(1,1)-simPNT(0,1)))/sqr((simPNT(1,1)-simPNT(0,1))^2+(simPNT(1,2)-simPNT(0,2))^2+(simPNT(1,3)-simPNT(0,3))^2)
+        unit_move_vectY=((simPNT(1,2)-simPNT(0,2)))/sqr((simPNT(1,1)-simPNT(0,1))^2+(simPNT(1,2)-simPNT(0,2))^2+(simPNT(1,3)-simPNT(0,3))^2)
+        unit_move_vectZ=((simPNT(1,3)-simPNT(0,3)))/sqr((simPNT(1,1)-simPNT(0,1))^2+(simPNT(1,2)-simPNT(0,2))^2+(simPNT(1,3)-simPNT(0,3))^2)
+  
+  
+        rem calculate and transfer new point coordinates after movement to simMOVE() array
+  
+        simMOVE(0,1)=simPNT(0,1)+_restore_displace*unit_move_vectX
+        simMOVE(0,2)=simPNT(0,2)+_restore_displace*unit_move_vectY
+        simMOVE(0,3)=simPNT(0,3)+_restore_displace*unit_move_vectZ
+  
+  
+  
+  
+        rem compare point 0 to all other points except itself and point 1 for steric interactions
+  
+        for checksterics%=2 to links-1
+    
+          spring_X=sqr((simPNT(checksterics%,1)-simPNT(0,1))^2+(simPNT(checksterics%,2)-simPNT(0,2))^2+(simPNT(checksterics%,3)-simPNT(0,3))^2)-Steric_Const
+    
+    
+    
+          rem only apply force if points are within steric interaction range
+    
+          if spring_X<0 then
+      
+            _restore_force=Sspring_const*spring_X
+      
+            _restore_displace=0.5*_restore_force*(0.1/SUB_iter%)^2
+      
+      
+            unit_move_vectX=((simPNT(checksterics%,1)-simPNT(0,1)))/sqr((simPNT(checksterics%,1)-simPNT(0,1))^2+(simPNT(checksterics%,2)-simPNT(0,2))^2+(simPNT(checksterics%,3)-simPNT(0,3))^2)
+            unit_move_vectY=((simPNT(checksterics%,2)-simPNT(0,2)))/sqr((simPNT(checksterics%,1)-simPNT(0,1))^2+(simPNT(checksterics%,2)-simPNT(0,2))^2+(simPNT(checksterics%,3)-simPNT(0,3))^2)
+            unit_move_vectZ=((simPNT(checksterics%,3)-simPNT(0,3)))/sqr((simPNT(checksterics%,1)-simPNT(0,1))^2+(simPNT(checksterics%,2)-simPNT(0,2))^2+(simPNT(checksterics%,3)-simPNT(0,3))^2)
+      
+            simMOVE(0,1)=simMOVE(0,1)+_restore_displace*unit_move_vectX
+            simMOVE(0,2)=simMOVE(0,2)+_restore_displace*unit_move_vectY
+            simMOVE(0,3)=simMOVE(0,3)+_restore_displace*unit_move_vectZ
+      
+          endif
+    
+        next
+  
+  
+  
+  
+  
+        rem compute Kuhn restore and steric repulsion for remaining points except last
+  
+        for compute_move%=1 to links-2
+    
+    
+          rem calculate spring extension -----------------
+    
+          spring_X1=sqr((simPNT(compute_move%,1)-simPNT(compute_move%-1,1))^2+(simPNT(compute_move%,2)-simPNT(compute_move%-1,2))^2+(simPNT(compute_move%,3)-simPNT(compute_move%-1,3))^2)-Kuhn
+          spring_X2=sqr((simPNT(compute_move%,1)-simPNT(compute_move%+1,1))^2+(simPNT(compute_move%,2)-simPNT(compute_move%+1,2))^2+(simPNT(compute_move%,3)-simPNT(compute_move%+1,3))^2)-Kuhn
+    
+    
+          rem calculate restoring force and displacement in sub-iteration time interval
+    
+          _restore_force1=Kspring_const*spring_X1
+          _restore_force2=Kspring_const*spring_X2
+    
+          _restore_displace1=0.5*_restore_force1*(0.1/SUB_iter%)^2
+          _restore_displace2=0.5*_restore_force2*(0.1/SUB_iter%)^2
+    
+          rem create a unit vector in the direction of force
+    
+    
+          vect_magnit1=sqr((simPNT(compute_move%,1)-simPNT(compute_move%-1,1))^2+(simPNT(compute_move%,2)-simPNT(compute_move%-1,2))^2+(simPNT(compute_move%,3)-simPNT(compute_move%-1,3))^2)
+          vect_magnit2=sqr((simPNT(compute_move%,1)-simPNT(compute_move%+1,1))^2+(simPNT(compute_move%,2)-simPNT(compute_move%+1,2))^2+(simPNT(compute_move%,3)-simPNT(compute_move%+1,3))^2)
+    
+    
+          unit_move_vectX1=((simPNT(compute_move%,1)-simPNT(compute_move%-1,1)))/vect_magnit1
+          unit_move_vectY1=((simPNT(compute_move%,2)-simPNT(compute_move%-1,2)))/vect_magnit1
+          unit_move_vectZ1=((simPNT(compute_move%,3)-simPNT(compute_move%-1,3)))/vect_magnit1
+    
+          unit_move_vectX2=((simPNT(compute_move%,1)-simPNT(compute_move%+1,1)))/vect_magnit2
+          unit_move_vectY2=((simPNT(compute_move%,2)-simPNT(compute_move%+1,2)))/vect_magnit2
+          unit_move_vectZ2=((simPNT(compute_move%,3)-simPNT(compute_move%+1,3)))/vect_magnit2
+    
+    
+          rem calculate and transfer new point coordinates after movement to simMOVE() array
+    
+          simMOVE(compute_move%,1)=simPNT(compute_move%,1)+_restore_displace1*-unit_move_vectX1
+          simMOVE(compute_move%,2)=simPNT(compute_move%,2)+_restore_displace1*-unit_move_vectY1
+          simMOVE(compute_move%,3)=simPNT(compute_move%,3)+_restore_displace1*-unit_move_vectZ1
+    
+          simMOVE(compute_move%,1)=simMOVE(compute_move%,1)+_restore_displace2*-unit_move_vectX2
+          simMOVE(compute_move%,2)=simMOVE(compute_move%,2)+_restore_displace2*-unit_move_vectY2
+          simMOVE(compute_move%,3)=simMOVE(compute_move%,3)+_restore_displace2*-unit_move_vectZ2
+    
+    
+    
+    
+    
+    
+          rem compare point to all other points except itself and adjacents for steric interactions
+    
+          for checksterics%=0 to links-1
+      
+      
+            if checksterics%<>compute_move% and checksterics%<>compute_move%-1 and checksterics%<>compute_move%+1 then
+        
+              spring_X=sqr((simPNT(checksterics%,1)-simPNT(compute_move%,1))^2+(simPNT(checksterics%,2)-simPNT(compute_move%,2))^2+(simPNT(checksterics%,3)-simPNT(compute_move%,3))^2)-Steric_Const
+        
+        
+        
+              rem only apply force if points are within steric interaction range
+        
+              if spring_X<0 then
+          
+                _restore_force=Sspring_const*spring_X
+          
+                _restore_displace=0.5*_restore_force*(0.1/SUB_iter%)^2
+          
+          
+                unit_move_vectX=((simPNT(checksterics%,1)-simPNT(compute_move%,1)))/sqr((simPNT(checksterics%,1)-simPNT(compute_move%,1))^2+(simPNT(checksterics%,2)-simPNT(compute_move%,2))^2+(simPNT(checksterics%,3)-simPNT(compute_move%,3))^2)
+                unit_move_vectY=((simPNT(checksterics%,2)-simPNT(compute_move%,2)))/sqr((simPNT(checksterics%,1)-simPNT(compute_move%,1))^2+(simPNT(checksterics%,2)-simPNT(compute_move%,2))^2+(simPNT(checksterics%,3)-simPNT(compute_move%,3))^2)
+                unit_move_vectZ=((simPNT(checksterics%,3)-simPNT(compute_move%,3)))/sqr((simPNT(checksterics%,1)-simPNT(compute_move%,1))^2+(simPNT(checksterics%,2)-simPNT(compute_move%,2))^2+(simPNT(checksterics%,3)-simPNT(compute_move%,3))^2)
+          
+                simMOVE(compute_move%,1)=simMOVE(compute_move%,1)+_restore_displace*unit_move_vectX
+                simMOVE(compute_move%,2)=simMOVE(compute_move%,2)+_restore_displace*unit_move_vectY
+                simMOVE(compute_move%,3)=simMOVE(compute_move%,3)+_restore_displace*unit_move_vectZ
+          
+              endif
+        
+            endif
+      
+          next checksterics%
+    
+        next compute_move%
+  
+  
+  
+        rem compute Kuhn restore and steric repulsion for point links-1
+  
+        rem calculate spring extension -----------------
+  
+        spring_X=sqr((simPNT(links-2,1)-simPNT(links-1,1))^2+(simPNT(links-2,2)-simPNT(links-1,2))^2+(simPNT(links-2,3)-simPNT(links-1,3))^2)-Kuhn
+  
+  
+        rem calculate restoring force and displacement in sub-iteration time interval
+  
+        _restore_force=Kspring_const*spring_X
+  
+        _restore_displace=0.5*_restore_force*(0.1/SUB_iter%)^2
+  
+  
+        rem create a unit vector in the direction of force
+  
+        unit_move_vectX=((simPNT(links-2,1)-simPNT(links-1,1)))/sqr((simPNT(links-2,1)-simPNT(links-1,1))^2+(simPNT(links-2,2)-simPNT(links-1,2))^2+(simPNT(links-2,3)-simPNT(links-1,3))^2)
+        unit_move_vectY=((simPNT(links-2,2)-simPNT(links-1,2)))/sqr((simPNT(links-2,1)-simPNT(links-1,1))^2+(simPNT(links-2,2)-simPNT(links-1,2))^2+(simPNT(links-2,3)-simPNT(links-1,3))^2)
+        unit_move_vectZ=((simPNT(links-2,3)-simPNT(links-1,3)))/sqr((simPNT(links-2,1)-simPNT(links-1,1))^2+(simPNT(links-2,2)-simPNT(links-1,2))^2+(simPNT(links-2,3)-simPNT(links-1,3))^2)
+  
+  
+        rem calculate and transfer new point coordinates after movement to simMOVE() array
+  
+        simMOVE(links-1,1)=simPNT(links-1,1)+_restore_displace*unit_move_vectX
+        simMOVE(links-1,2)=simPNT(links-1,2)+_restore_displace*unit_move_vectY
+        simMOVE(links-1,3)=simPNT(links-1,3)+_restore_displace*unit_move_vectZ
+  
+  
+  
+  
+        rem compare point links-1 to all other points except itself and point links-2 for steric interactions
+  
+        for checksterics%=0 to links-3
+    
+          spring_X=sqr((simPNT(checksterics%,1)-simPNT(links-1,1))^2+(simPNT(checksterics%,2)-simPNT(links-1,2))^2+(simPNT(checksterics%,3)-simPNT(links-1,3))^2)-Steric_Const
+    
+    
+    
+          rem only apply force if points are within steric interaction range
+    
+          if spring_X<0 then
+      
+            _restore_force=Sspring_const*spring_X
+      
+            _restore_displace=0.5*_restore_force*(0.1/SUB_iter%)^2
+      
+      
+            unit_move_vectX=((simPNT(checksterics%,1)-simPNT(links-1,1)))/sqr((simPNT(checksterics%,1)-simPNT(links-1,1))^2+(simPNT(checksterics%,2)-simPNT(links-1,2))^2+(simPNT(checksterics%,3)-simPNT(links-1,3))^2)
+            unit_move_vectY=((simPNT(checksterics%,2)-simPNT(links-1,2)))/sqr((simPNT(checksterics%,1)-simPNT(links-1,1))^2+(simPNT(checksterics%,2)-simPNT(links-1,2))^2+(simPNT(checksterics%,3)-simPNT(links-1,3))^2)
+            unit_move_vectZ=((simPNT(checksterics%,3)-simPNT(links-1,3)))/sqr((simPNT(checksterics%,1)-simPNT(links-1,1))^2+(simPNT(checksterics%,2)-simPNT(links-1,2))^2+(simPNT(checksterics%,3)-simPNT(links-1,3))^2)
+      
+            simMOVE(links-1,1)=simMOVE(links-1,1)+_restore_displace*unit_move_vectX
+            simMOVE(links-1,2)=simMOVE(links-1,2)+_restore_displace*unit_move_vectY
+            simMOVE(links-1,3)=simMOVE(links-1,3)+_restore_displace*unit_move_vectZ
+      
+          endif
+    
+        next
+  
+  
+      next iter_loop%
+
+      for transfer2%=0 to links-1
+  
+        simPNT(transfer2%,1)=simMOVE(transfer2%,1)
+        simPNT(transfer2%,2)=simMOVE(transfer2%,2)
+        simPNT(transfer2%,3)=simMOVE(transfer2%,3)
+  
+      next
+
+
+      endproc
+
+
+      defprocSAVESIMDATA
+
+      rem compute end to end
+
+      EtED_bases=sqr((SPoints(links-1,1)-SPoints(0,1))^2+(SPoints(links-1,2)-SPoints(0,2))^2+(SPoints(links-1,3)-SPoints(0,3))^2)
+
+      EtED=EtED_bases/Kuhn
+
+      iter$="_"+str$(sim_loop_iteration%)+".smtn"
+
+      flnm$=sim_file_path$+iter$
+
+      flnmlog$=sim_file_path$+"_log.txt"
+
+
+      oscli "spoolon "+flnmlog$
+
+      print "";EtED
+
+      *spool
+
+
+
+      SA_simout=openout flnm$
+
+      print#SA_simout,links
+      print#SA_simout,Kuhn
+      print#SA_simout,Steric_Const
+
+      for SAV_STATE%=0 to links
+  
+        print#SA_simout,SPoints(SAV_STATE%,1)
+        print#SA_simout,SPoints(SAV_STATE%,2)
+        print#SA_simout,SPoints(SAV_STATE%,3)
+  
+      next
+
+      close#SA_simout
+
+      endproc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
