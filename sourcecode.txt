@@ -9,7 +9,7 @@
       vdu 23,22,SX%;SY%;8,16,16,128
       vdu 20
       sys "ShowWindow", @hwnd%, 1
-      title$="BioPolymer Simulation - University of Leicester, By Wills, Maximilian, FK"
+      title$="BioPolymer Simulation - University of Leicester, By [CENSORED AUTHOR]"
       sys "SetWindowText", @hwnd%, title$
 
       vdu 26
